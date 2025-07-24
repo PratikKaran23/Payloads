@@ -57,22 +57,31 @@ class CVASearchApp:
             if finding:
                 self.show_finding_popup(finding)
 
-    def show_finding_popup(self, finding):
-        popup = tk.Toplevel()
-        popup.title(f"Finding: {finding['CVA ID']}")
-        popup.geometry("600x400")
+def show_finding_popup(self, finding):
+    popup = tk.Toplevel()
+    popup.title(f"Finding: {finding['CVA ID']}")
+    popup.geometry("600x400")
 
-        text = tk.Text(popup, wrap="word")
-        text.pack(fill="both", expand=True)
+    text = tk.Text(popup, wrap="word")
+    text.pack(fill="both", expand=True, padx=10, pady=10)
 
-        content = ""
-        for key, value in finding.items():
-            content += f"{key}:\n{value}\n\n"
+    content = ""
+    for key, value in finding.items():
+        content += f"{key}:\n{value}\n\n"
 
-        text.insert("1.0", content)
-        text.config(state="disabled")
+    text.insert("1.0", content)
+    text.config(state="disabled")
 
-        tk.Button(popup, text="Close", command=popup.destroy).pack(pady=5)
+    def copy_to_clipboard():
+        popup.clipboard_clear()
+        popup.clipboard_append(content)
+        popup.update()  # required to keep clipboard content after window is closed
+
+    btn_frame = tk.Frame(popup)
+    btn_frame.pack(pady=5)
+
+    tk.Button(btn_frame, text="Copy to Clipboard", command=copy_to_clipboard).pack(side="left", padx=10)
+    tk.Button(btn_frame, text="Close", command=popup.destroy).pack(side="left", padx=10)
 
     # ✅ Dialog to Add New Finding
     def open_add_finding_dialog(self):
