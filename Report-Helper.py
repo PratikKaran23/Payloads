@@ -1,104 +1,115 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import csv
-import pyperclip  # pip install pyperclip
-
-# Load CSV data
-def load_csv(filename="data.csv"):
-    with open(filename, newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-        return list(reader)
 
 class CVASearchApp:
     def __init__(self, root):
-        self.root = root
-        self.root.title("CVA Search Tool")
-        self.data = load_csv()
+        self.filename = 'finding.csv'  # path to your CSV file
+        self.data = self.load_csv()
+        self.create_ui(root)
 
-        # Search Box
+    def load_csv(self):
+        try:
+            with open(self.filename, newline='', encoding='utf-8-sig') as csvfile:
+                reader = csv.DictReader(csvfile)
+                return list(reader)
+        except FileNotFoundError:
+            return []
+
+    def create_ui(self, root):
+        root.title("CVA Finder")
+
         self.search_var = tk.StringVar()
-        tk.Label(root, text="Search:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
-        tk.Entry(root, textvariable=self.search_var, width=50).grid(row=0, column=1, padx=5)
-        tk.Button(root, text="Search", command=self.search).grid(row=0, column=2, padx=5)
+        tk.Label(root, text="Search CVA ID or Title:").pack(pady=5)
+        search_entry = tk.Entry(root, textvariable=self.search_var, width=50)
+        search_entry.pack(pady=5)
+        search_entry.bind("<KeyRelease>", self.perform_search)
 
-        # Treeview: Show CVA ID and Title
         self.tree = ttk.Treeview(root, columns=("CVA ID", "Title"), show="headings")
         self.tree.heading("CVA ID", text="CVA ID")
         self.tree.heading("Title", text="Title")
-        self.tree.column("CVA ID", width=100)
-        self.tree.column("Title", width=400)
-        self.tree.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
-        self.tree.bind("<Double-1>", self.show_details)
+        self.tree.pack(fill="both", expand=True, padx=10, pady=10)
+        self.tree.bind("<Double-1>", self.on_item_double_click)
 
-        root.grid_rowconfigure(1, weight=1)
-        root.grid_columnconfigure(1, weight=1)
+        # ✅ Add button to add findings
+        add_button = tk.Button(root, text="Add New Finding", command=self.open_add_finding_dialog)
+        add_button.pack(pady=10)
 
         self.load_data(self.data)
 
-    def load_data(self, dataset):
-        self.tree.delete(*self.tree.get_children())
-        for row in dataset:
-            self.tree.insert("", tk.END, values=(row["CVA ID"], row["Title"]))
-
-    def search(self):
+    def perform_search(self, event=None):
         query = self.search_var.get().lower()
-        filtered = []
-
-        for row in self.data:
-            if query in row["CVA ID"].lower() or query in row["Title"].lower():
-                filtered.append(row)
-
+        filtered = [row for row in self.data if query in row["CVA ID"].lower() or query in row["Title"].lower()]
         self.load_data(filtered)
 
-    def show_details(self, event):
-        selected_item = self.tree.focus()
-        if not selected_item:
-            return
+    def load_data(self, data):
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+        for row in data:
+            self.tree.insert("", "end", values=(row["CVA ID"], row["Title"]))
 
-        values = self.tree.item(selected_item, "values")
-        selected_cva_id = values[0]
+    def on_item_double_click(self, event):
+        item = self.tree.selection()
+        if item:
+            values = self.tree.item(item[0], "values")
+            cva_id = values[0]
+            finding = next((row for row in self.data if row["CVA ID"] == cva_id), None)
+            if finding:
+                self.show_finding_popup(finding)
 
-        # Find full row
-        for row in self.data:
-            if row["CVA ID"] == selected_cva_id:
-                self.show_popup(row)
-                break
+    def show_finding_popup(self, finding):
+        popup = tk.Toplevel()
+        popup.title(f"Finding: {finding['CVA ID']}")
+        popup.geometry("600x400")
 
-    def show_popup(self, row):
-        popup = tk.Toplevel(self.root)
-        popup.title(f"{row['CVA ID']} Details")
-        popup.geometry("700x500")
+        text = tk.Text(popup, wrap="word")
+        text.pack(fill="both", expand=True)
 
-        fields = [
-            ("CVA ID", row["CVA ID"]),
-            ("Title", row["Title"]),
-            ("Description", row["Description"]),
-            ("Risk Rating", row["Risk Rating"]),
-            ("Recommended Solution", row["Recommended Solution"]),
-            ("Affected Hosts", row["Affected Hosts"]),
-            ("Resolved Hosts", row["Resolved Hosts"]),
-        ]
+        content = ""
+        for key, value in finding.items():
+            content += f"{key}:\n{value}\n\n"
 
-        frame = tk.Frame(popup)
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
+        text.insert("1.0", content)
+        text.config(state="disabled")
 
-        for i, (label, value) in enumerate(fields):
-            tk.Label(frame, text=f"{label}:", font=("Arial", 10, "bold")).grid(row=i, column=0, sticky="nw", pady=4)
-            text_box = tk.Text(frame, height=3, width=60, wrap="word")
-            text_box.insert("1.0", value)
-            text_box.config(state="disabled")
-            text_box.grid(row=i, column=1, pady=4)
-            tk.Button(frame, text="Copy", command=lambda v=value: self.copy_to_clipboard(v)).grid(row=i, column=2, padx=5)
+        tk.Button(popup, text="Close", command=popup.destroy).pack(pady=5)
 
-        # Copy All Button
-        full_text = "\n".join([f"{label}: {value}" for label, value in fields])
-        tk.Button(popup, text="Copy All", command=lambda: self.copy_to_clipboard(full_text)).pack(pady=10)
+    # ✅ Dialog to Add New Finding
+    def open_add_finding_dialog(self):
+        dialog = tk.Toplevel()
+        dialog.title("Add New Finding")
 
-    def copy_to_clipboard(self, text):
-        pyperclip.copy(text)
-        messagebox.showinfo("Copied", "Text copied to clipboard.")
+        fields = ["CVA ID", "Title", "Description", "Steps To Reproduce", "Risk Rating Note", "CVSS", "Reference SOWs"]
+        entries = {}
 
-# Run App
+        for i, field in enumerate(fields):
+            tk.Label(dialog, text=field).grid(row=i, column=0, sticky="w", padx=10, pady=2)
+            entry = tk.Entry(dialog, width=60)
+            entry.grid(row=i, column=1, padx=10, pady=2)
+            entries[field] = entry
+
+        def save_entry():
+            new_data = {field: entries[field].get() for field in fields}
+            if not new_data["CVA ID"] or not new_data["Title"]:
+                messagebox.showerror("Validation Error", "CVA ID and Title are required.")
+                return
+            self.data.append(new_data)
+            self.save_to_csv()
+            self.load_data(self.data)
+            dialog.destroy()
+
+        tk.Button(dialog, text="Save", command=save_entry).grid(row=len(fields), column=0, columnspan=2, pady=10)
+
+    # ✅ Save to CSV
+    def save_to_csv(self):
+        fieldnames = ["CVA ID", "Title", "Description", "Steps To Reproduce", "Risk Rating Note", "CVSS", "Reference SOWs"]
+        with open(self.filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in self.data:
+                writer.writerow(row)
+
+# Run the app
 if __name__ == "__main__":
     root = tk.Tk()
     app = CVASearchApp(root)
