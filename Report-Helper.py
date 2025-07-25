@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 import csv
-from tkinter import messagebox
 
 class CVASearchApp:
     def __init__(self, root):
@@ -25,7 +24,10 @@ class CVASearchApp:
         self.tree.bind("<Double-1>", self.show_details)
 
         add_button = tk.Button(root, text="Add New Finding", command=self.open_add_finding_dialog)
-        add_button.pack(pady=10)
+        add_button.pack(pady=5)
+
+        edit_button = tk.Button(root, text="Edit Selected Finding", command=self.open_edit_finding_dialog)
+        edit_button.pack(pady=5)
 
         self.load_data(self.data)
 
@@ -63,7 +65,6 @@ class CVASearchApp:
         values = self.tree.item(selected_item)["values"]
         cva_id, title = values[0], values[1]
         finding = next((f for f in self.data if f["CVA ID"] == cva_id and f["Title"] == title), None)
-
         if not finding:
             return
 
@@ -75,25 +76,36 @@ class CVASearchApp:
 
         for i, section in enumerate(sections):
             content = finding.get(section, "")
-            label = tk.Label(detail_window, text=f"{section}:", anchor='w', justify='left', font=("Arial", 10, "bold"))
-            label.grid(row=i, column=0, sticky="nw", padx=10, pady=4)
+            tk.Label(detail_window, text=f"{section}:", anchor='w', font=("Arial", 10, "bold")).grid(row=i, column=0, sticky="nw", padx=10, pady=4)
 
             text_widget = tk.Text(detail_window, height=3, width=80, wrap="word")
             text_widget.insert("1.0", content)
             text_widget.config(state="disabled")
             text_widget.grid(row=i, column=1, padx=5, pady=4)
 
-            # Copy button for section
             def copy_section(c=content):
                 self.root.clipboard_clear()
                 self.root.clipboard_append(c)
 
-            copy_btn = tk.Button(detail_window, text="Copy", command=copy_section)
-            copy_btn.grid(row=i, column=2, padx=5)
+            tk.Button(detail_window, text="Copy", command=copy_section).grid(row=i, column=2, padx=5)
 
     def open_add_finding_dialog(self):
+        self._open_finding_dialog("Add New Finding")
+
+    def open_edit_finding_dialog(self):
+        selected_item = self.tree.focus()
+        if not selected_item:
+            return
+
+        values = self.tree.item(selected_item)["values"]
+        cva_id, title = values[0], values[1]
+        index = next((i for i, f in enumerate(self.data) if f["CVA ID"] == cva_id and f["Title"] == title), None)
+        if index is not None:
+            self._open_finding_dialog("Edit Finding", self.data[index], index)
+
+    def _open_finding_dialog(self, title, existing_data=None, index=None):
         dialog = tk.Toplevel()
-        dialog.title("Add New Finding")
+        dialog.title(title)
         dialog.geometry("600x500")
 
         fields = ["CVA ID", "Title", "Description", "Steps To Reproduce", "Risk Rating Note", "CVSS", "Reference SOWs", "Recommendation"]
@@ -102,12 +114,17 @@ class CVASearchApp:
         for i, field in enumerate(fields):
             tk.Label(dialog, text=field).grid(row=i, column=0, sticky="w", padx=10, pady=2)
             entry = tk.Entry(dialog, width=60)
+            if existing_data:
+                entry.insert(0, existing_data.get(field, ""))
             entry.grid(row=i, column=1, padx=10, pady=2)
             entries[field] = entry
 
         def save_entry():
             new_data = {field: entries[field].get() for field in fields}
-            self.data.append(new_data)
+            if index is not None:
+                self.data[index] = new_data
+            else:
+                self.data.append(new_data)
             self.save_to_csv()
             self.load_data(self.data)
             dialog.destroy()
