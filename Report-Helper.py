@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import csv
+from tkinter import messagebox
 
 class CVASearchApp:
     def __init__(self, root):
@@ -23,11 +24,18 @@ class CVASearchApp:
 
         self.tree.bind("<Double-1>", self.show_details)
 
-        add_button = tk.Button(root, text="Add New Finding", command=self.open_add_finding_dialog)
-        add_button.pack(pady=5)
+        # Horizontal button frame
+        button_frame = tk.Frame(root)
+        button_frame.pack(pady=10)
 
-        edit_button = tk.Button(root, text="Edit Selected Finding", command=self.open_edit_finding_dialog)
-        edit_button.pack(pady=5)
+        add_button = tk.Button(button_frame, text="➕ Add New Finding", command=self.open_add_finding_dialog, width=20)
+        add_button.pack(side="left", padx=5)
+
+        edit_button = tk.Button(button_frame, text="✏️ Edit Selected Finding", command=self.open_edit_finding_dialog, width=25)
+        edit_button.pack(side="left", padx=5)
+
+        delete_button = tk.Button(button_frame, text="🗑 Delete Selected Finding", command=self.delete_selected_finding, width=25)
+        delete_button.pack(side="left", padx=5)
 
         self.load_data(self.data)
 
@@ -95,6 +103,7 @@ class CVASearchApp:
     def open_edit_finding_dialog(self):
         selected_item = self.tree.focus()
         if not selected_item:
+            messagebox.showwarning("No Selection", "Please select a finding to edit.")
             return
 
         values = self.tree.item(selected_item)["values"]
@@ -130,6 +139,23 @@ class CVASearchApp:
             dialog.destroy()
 
         tk.Button(dialog, text="Save", command=save_entry).grid(row=len(fields), column=0, columnspan=2, pady=10)
+
+    def delete_selected_finding(self):
+        selected_item = self.tree.focus()
+        if not selected_item:
+            messagebox.showwarning("No Selection", "Please select a finding to delete.")
+            return
+
+        values = self.tree.item(selected_item)["values"]
+        cva_id, title = values[0], values[1]
+
+        index = next((i for i, f in enumerate(self.data) if f["CVA ID"] == cva_id and f["Title"] == title), None)
+        if index is not None:
+            confirm = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete:\n\n{cva_id} - {title}?")
+            if confirm:
+                self.data.pop(index)
+                self.save_to_csv()
+                self.load_data(self.data)
 
 if __name__ == "__main__":
     root = tk.Tk()
